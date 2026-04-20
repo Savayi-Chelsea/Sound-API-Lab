@@ -1,0 +1,446 @@
+/* Google Fonts — Space Mono for monospace labels, DM Sans for body text */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+/* Reset default browser spacing and sizing behaviour */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Global colour tokens — changing a value here updates the whole UI */
+:root {
+  --bg: #0d0d0f;
+  --surface: #16161a;
+  --surface2: #1e1e24;
+  --surface3: #2a2a33;
+  --accent: #c8f542;
+  --accent-dim: rgba(200,245,66,0.15);
+  --accent-dim2: rgba(200,245,66,0.08);
+  --text: #f0f0ee;
+  --text-muted: #888890;
+  --text-dim: #555560;
+  --danger: #ff5f5f;
+  --radius: 14px;
+}
+
+/* Centre the player vertically and horizontally on the page */
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+/* Constrain the player to a readable width */
+.player-wrap {
+  width: 100%;
+  max-width: 520px;
+}
+
+/* Small uppercase heading above the card */
+.label-top {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+
+/* The main card container */
+.player-card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 2rem;
+  border: 1px solid #2a2a33;
+}
+
+/* ── FILE DROP ZONE ─────────────────────────────── */
+
+.file-zone {
+  border: 1.5px dashed var(--surface3);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+/* Highlight the zone on hover or when a file is dragged over it */
+.file-zone:hover, .file-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-dim2);
+}
+
+/* The real file input is invisible — the styled zone acts as its visible face */
+.file-zone input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+
+.file-zone .icon {
+  font-size: 28px;
+  margin-bottom: 0.4rem;
+  display: block;
+}
+
+.file-zone p {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.file-zone .file-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 0.3rem;
+}
+
+/* ── REMOVE BUTTON ──────────────────────────────── */
+
+/* Hidden by default; shown via .visible once a file is loaded */
+.remove-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid #3a2020;
+  border-radius: 8px;
+  color: var(--danger);
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  padding: 6px 12px;
+  margin-top: 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.remove-btn:hover { background: rgba(255,95,95,0.1); border-color: var(--danger); }
+.remove-btn svg { width: 13px; height: 13px; fill: currentColor; }
+.remove-btn.visible { display: flex; }
+
+/* ── TRACK INFO ─────────────────────────────────── */
+
+/* Row that holds the track name and the remove button side by side */
+.track-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.track-header-left { flex: 1; min-width: 0; }
+
+/* Hidden until a file is loaded */
+.track-info {
+  margin-bottom: 1.5rem;
+  display: none;
+}
+.track-info.visible { display: block; }
+
+.track-name {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Monospace metadata line: duration · format · file size */
+.track-meta {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  letter-spacing: 0.08em;
+}
+
+/* ── FREQUENCY VISUALIZER ───────────────────────── */
+
+/* The bar chart container driven by the Web Audio API AnalyserNode */
+.viz-wrap {
+  background: var(--surface2);
+  border-radius: var(--radius);
+  height: 64px;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 6px 6px;
+  gap: 2px;
+  overflow: hidden;
+  display: none;
+}
+.viz-wrap.visible { display: flex; }
+
+/* Each bar represents one frequency band from the analyser's data array */
+.viz-bar {
+  flex: 1;
+  background: var(--accent-dim);
+  border-radius: 2px 2px 0 0;
+  min-height: 4px;
+  transition: height 0.08s ease, background 0.1s;
+}
+
+/* Bars above the amplitude threshold glow with the accent colour */
+.viz-bar.active { background: var(--accent); }
+
+/* ── SEEK BAR ───────────────────────────────────── */
+
+.seek-row {
+  margin-bottom: 1.25rem;
+  display: none;
+}
+.seek-row.visible { display: block; }
+
+/* Clickable track — user can click anywhere to jump to that position */
+.seek-wrap {
+  position: relative;
+  height: 5px;
+  background: var(--surface3);
+  border-radius: 99px;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+/* The filled portion grows as the audio plays */
+.seek-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  width: 0%;
+  pointer-events: none;
+  transition: width 0.1s linear;
+}
+
+/* The draggable circle; hidden until the user hovers over the seek bar */
+.seek-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 14px; height: 14px;
+  background: var(--accent);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: transform 0.15s;
+}
+.seek-wrap:hover .seek-thumb { transform: translate(-50%, -50%) scale(1); }
+
+/* Elapsed / total time shown beneath the seek bar */
+.time-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+#currentTime { color: var(--text-muted); }
+
+/* ── MAIN PLAYBACK CONTROLS ─────────────────────── */
+
+.main-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+}
+
+/* Skip back / skip forward buttons */
+.ctrl-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+.ctrl-btn:hover { color: var(--text); background: var(--surface2); }
+.ctrl-btn.active { color: var(--accent); }
+.ctrl-btn svg { width: 20px; height: 20px; fill: currentColor; }
+
+/* Central play / pause button */
+.play-btn {
+  width: 56px; height: 56px;
+  background: var(--accent);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0d0d0f;
+  transition: transform 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.play-btn:hover { transform: scale(1.06); }
+.play-btn:active { transform: scale(0.96); }
+.play-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
+/* Greyed out state before a file is loaded */
+.play-btn:disabled { background: var(--surface3); color: var(--text-dim); cursor: not-allowed; transform: none; }
+
+/* ── VOLUME & SPEED GRID ────────────────────────── */
+
+.secondary-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+}
+
+/* Volume row: speaker icon + range slider + percentage label */
+.vol-row {
+  background: var(--surface2);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vol-icon { cursor: pointer; flex-shrink: 0; color: var(--text-muted); transition: color 0.15s; }
+.vol-icon:hover { color: var(--accent); }
+.vol-icon svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+
+/* Custom-styled range slider for volume */
+input[type="range"].vol-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--surface3);
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"].vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+input[type="range"].vol-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+.vol-val {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* Speed selector box */
+.speed-box {
+  background: var(--surface2);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.speed-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  display: block;
+}
+.speed-btns { display: flex; gap: 5px; }
+
+.speed-btn {
+  flex: 1;
+  background: var(--surface3);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: 'Space Mono', monospace;
+  cursor: pointer;
+  padding: 5px 2px;
+  text-align: center;
+  transition: all 0.15s;
+}
+.speed-btn:hover { color: var(--text); border-color: var(--surface3); }
+
+/* The currently selected speed is highlighted in accent */
+.speed-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── LOOP / MUTE TOGGLE BUTTONS ─────────────────── */
+
+.extra-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+
+.tag-btn {
+  background: var(--surface2);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  padding: 7px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.tag-btn:hover { background: var(--surface3); color: var(--text); }
+
+/* Active state when loop or mute is switched on */
+.tag-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.tag-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+/* ── KEYBOARD SHORTCUT HINTS ────────────────────── */
+
+.kb-hints {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.kb-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Styled like physical keyboard keys */
+kbd {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  background: var(--surface2);
+  border: 1px solid var(--surface3);
+  border-radius: 4px;
+  padding: 2px 5px;
+  color: var(--text-dim);
+}
+
+/* ── STATUS BAR ─────────────────────────────────── */
+
+#statusMsg {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 1.25rem;
+  min-height: 16px;
+  font-family: 'Space Mono', monospace;
+}
+#statusMsg.ok  { color: var(--accent); }
+#statusMsg.err { color: var(--danger); }
+
+/* Thin horizontal divider between sections */
+.sep { border: none; border-top: 1px solid var(--surface2); margin: 1.25rem 0; }
